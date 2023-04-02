@@ -6,18 +6,36 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Image from "next/image";
 import { LoadingPage } from "~/components/loading";
+import { useState } from "react";
 
 dayjs.extend(relativeTime);
 
 const CreatePostWizard = () => {
   const { user } = useUser();
 
+  const [input, setInput] = useState("");
+
+  const ctx = api.useContext();
+
+  const { mutate, isLoading: isPosting } = api.posts.create.useMutation({
+    onSuccess: () => {
+      setInput("");
+      void ctx.posts.getAll.invalidate();
+    },
+  });
+
   if (!user) {
     return null;
   }
 
   return (
-    <div className="flex w-full gap-3">
+    <form
+      className="flex w-full gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        mutate({ content: input });
+      }}
+    >
       <Image
         src={user.profileImageUrl}
         alt="Profile image"
@@ -29,8 +47,12 @@ const CreatePostWizard = () => {
         type="text"
         placeholder="Type some emojis!"
         className="flex-grow bg-transparent outline-none"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        disabled={isPosting}
       />
-    </div>
+      <input type="submit" value="Post" />
+    </form>
   );
 };
 
@@ -52,7 +74,7 @@ const PostView = ({ post }: { post: PostWithUser }) => {
           <span>&#183;</span>
           <span>{dayjs(post.createdAt).fromNow()}</span>
         </div>
-        <span>{post.content}</span>
+        <span className="text-2xl">{post.content}</span>
       </div>
     </div>
   );
