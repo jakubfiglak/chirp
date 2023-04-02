@@ -11,11 +11,11 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 
-const filterUserForClient = (user: User) => {
+const filterUserForClient = ({ id, username, profileImageUrl }: User) => {
   return {
-    id: user.id,
-    username: user.username,
-    profileImageUrl: user.profileImageUrl,
+    id,
+    username,
+    profileImageUrl,
   };
 };
 
@@ -61,7 +61,15 @@ export const postsRouter = createTRPCRouter({
   }),
 
   create: privateProcedure
-    .input(z.object({ content: z.string().emoji().min(1).max(280) }))
+    .input(
+      z.object({
+        content: z
+          .string()
+          .emoji({ message: "Only emojis are allowed" })
+          .min(1)
+          .max(280),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const authorId = ctx.userId;
 
