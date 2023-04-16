@@ -1,33 +1,62 @@
-import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
-import { type NextPage } from "next";
+import type { GetStaticProps, NextPage } from "next";
 import Head from "next/head";
 import { api } from "~/utils/api";
+import { PageLayout } from "~/components/layout";
+import { PostView } from "~/components/post-view";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import { generateSSGHelper } from "~/server/helpers/ssgHelper";
 
-const SinglePostPage: NextPage = () => {
-  const { isSignedIn, isLoaded: userLoaded } = useUser();
+dayjs.extend(relativeTime);
 
-  // Start fetching asap
-  api.posts.getAll.useQuery();
+type PageProps = { id: string };
 
-  // Return empty div if user isn't loaded yet
-  if (!userLoaded) return <div />;
+const PostPage: NextPage<PageProps> = ({ id }) => {
+  const { data, isLoading } = api.posts.getById.useQuery({
+    id,
+  });
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!data) {
+    return <div>404</div>;
+  }
 
   return (
     <>
       <Head>
-        <title>Post</title>
+        <title>{`${data.content} - ${data.author.username}`}</title>
       </Head>
-      <main className="flex h-screen justify-center">
-        <div className="w-full border-x border-slate-400 md:max-w-2xl">
-          <div className="flex justify-center border-b border-slate-400 p-4">
-            <div className="flex justify-center">
-              {isSignedIn ? <SignOutButton /> : <SignInButton />}
-            </div>
-          </div>
-        </div>
-      </main>
+      <PageLayout>
+        <PostView post={data} />
+      </PageLayout>
     </>
   );
 };
 
-export default SinglePostPage;
+export const getStaticPaths = () => {
+  return { paths: [], fallback: "blocking" };
+};
+
+export const getStaticProps: GetStaticProps = async (context) => {
+  const ssg = generateSSGHelper();
+
+  const id = context.params?.id;
+
+  if (typeof id !== "string") {
+    throw new Error("no id");
+  }
+
+  await ssg.posts.getById.prefetch({ id });
+
+  return {
+    props: {
+      trpcState: ssg.dehydrate(),
+      id,
+    },
+  };
+};
+
+export default PostPage;
