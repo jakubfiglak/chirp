@@ -7,6 +7,32 @@ import { prisma } from "~/server/db";
 import superjson from "superjson";
 import { PageLayout } from "~/components/layout";
 import Image from "next/image";
+import { LoadingPage } from "~/components/loading";
+import { PostView } from "~/components/post-view";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+
+dayjs.extend(relativeTime);
+
+const ProfileFeed = ({ userId }: { userId: string }) => {
+  const { data, isLoading } = api.posts.getPostsByUserId.useQuery({ userId });
+
+  if (isLoading) {
+    return <LoadingPage />;
+  }
+
+  if (!data || data.length === 0) {
+    return <div>User has not posted</div>;
+  }
+
+  return (
+    <div className="flex flex-col">
+      {data?.map((post) => (
+        <PostView key={post.id} post={post} />
+      ))}
+    </div>
+  );
+};
 
 type PageProps = { username: string };
 
@@ -44,7 +70,8 @@ const ProfilePage: NextPage<PageProps> = ({ username }) => {
             data.username ?? "user"
           }`}</h3>
         </div>
-        <div className="border-b border-slate-400"></div>
+        <div className="border-b border-slate-400" />
+        <ProfileFeed userId={data.id} />
       </PageLayout>
     </>
   );
